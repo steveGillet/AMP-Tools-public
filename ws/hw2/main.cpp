@@ -17,6 +17,10 @@ int main(int argc, char** argv) {
 
     // Use WO1 from Exercise 2
     Problem2D problem = HW2::getWorkspace1();
+    problem.x_max = 14;
+    problem.x_min = -1;
+    problem.y_max = 14;
+    problem.y_min = -1;
 
     // Use WO1 from Exercise 2
     /*
