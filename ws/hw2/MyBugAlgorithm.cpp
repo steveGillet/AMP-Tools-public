@@ -1,6 +1,10 @@
 #include "MyBugAlgorithm.h"
 
 amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
+    return bug1(problem);
+}
+
+amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 
     amp::Path2D path;
     path.waypoints.push_back(problem.q_init);
@@ -9,7 +13,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
     double angleIncrement = 0.180; // ~10 degrees
 
     int counter1 = 0;
-    while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 10000){
+    while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 1000){
         counter1++;
         Eigen::Vector2d directionVector = (problem.q_goal - currentPosition).normalized();
         currentPosition += directionVector * stepSize;
@@ -26,14 +30,14 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
             Eigen::Vector2d hitPoint = currentPosition;
 
             int counter2 = 0;
-            while (circumnavigated != true && counter2 < 10000){
+            while (circumnavigated != true && counter2 < 1000){
                 counter2 ++;
 
                 directionVector = tangentVector(hitObstacle->verticesCCW(), currentPosition, true);
                 currentPosition += directionVector * stepSize;
 
                 int counter3 = 0;
-                while (inObstacle(problem.obstacles, currentPosition) && counter3 < 10000){
+                while (inObstacle(problem.obstacles, currentPosition) && counter3 < 1000){
                     counter3++;
                     hitObstacle = inObstacle(problem.obstacles, currentPosition);
 
@@ -67,14 +71,14 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
                     if (closestIndex < (visitedPoints.size() / 2)) directionCCW = true;
 
                     int counter4 = 0;
-                    while (reachedLeavePoint == false && counter4 < 10000){
+                    while (reachedLeavePoint == false && counter4 < 1000){
                         counter4++;
 
                         directionVector = tangentVector(hitObstacle->verticesCCW(), currentPosition, directionCCW);
                         currentPosition += directionVector * stepSize;
                         
                         int counter5 = 4;
-                        while (inObstacle(problem.obstacles, currentPosition) && counter5 < 10000){
+                        while (inObstacle(problem.obstacles, currentPosition) && counter5 < 1000){
                             counter5++;
 
                             currentPosition -= directionVector * stepSize;
@@ -92,6 +96,82 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
                         path.waypoints.push_back(currentPosition);
                     }
 
+                }
+            }
+        }
+        path.waypoints.push_back(currentPosition);
+    }
+    path.waypoints.push_back(problem.q_goal);
+
+    return path;
+}
+
+amp::Path2D MyBugAlgorithm::bug2(const amp::Problem2D& problem){
+
+    amp::Path2D path;
+    path.waypoints.push_back(problem.q_init);
+    Eigen::Vector2d currentPosition = problem.q_init;
+    double stepSize = .25;
+    double angleIncrement = 0.180; // ~10 degrees
+
+    int counter1 = 0;
+    while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 1000){
+        counter1++;
+        Eigen::Vector2d directionVector = (problem.q_goal - currentPosition).normalized();
+        currentPosition += directionVector * stepSize;
+
+        std::unique_ptr<amp::Polygon> hitObstacle = inObstacle(problem.obstacles, currentPosition);
+
+        if (hitObstacle) {
+            bool circumnavigated = false;
+            bool leftHitPoint = false;
+            bool hitMline = false;
+            std::vector<Eigen::Vector2d> visitedPoints;
+
+            currentPosition -= directionVector * stepSize;
+            
+            Eigen::Vector2d hitPoint = currentPosition;
+
+            int counter2 = 0;
+            while (hitMline != true && counter2 < 1000){
+                counter2 ++;
+
+                directionVector = tangentVector(hitObstacle->verticesCCW(), currentPosition, true);
+                currentPosition += directionVector * stepSize;
+
+                int counter3 = 0;
+                while (inObstacle(problem.obstacles, currentPosition) && counter3 < 1000){
+                    counter3++;
+                    hitObstacle = inObstacle(problem.obstacles, currentPosition);
+
+                    currentPosition -= directionVector * stepSize;
+                    directionVector = rotateVector(directionVector, angleIncrement);
+                    currentPosition += directionVector * stepSize;
+                }
+
+                path.waypoints.push_back(currentPosition);
+
+                if((currentPosition - hitPoint).norm() > stepSize && leftHitPoint == false) leftHitPoint = true;
+                else if(leftHitPoint == true) {
+                    hitMline = isOnMLine(currentPosition, problem.q_goal, problem.q_init, stepSize);
+
+                    if(hitMline){
+                        bool visitedBefore = false;
+                        for (const auto& visitedPoint : visitedPoints){
+                            if((visitedPoint - currentPosition).norm() < stepSize){
+                                visitedBefore = true;
+                                break;
+                            }
+                        }
+
+                        if(!visitedBefore){
+                            visitedPoints.push_back(currentPosition);
+                            break;
+                        }
+                        else{
+                            hitMline = false;
+                        }
+                    }
                 }
             }
         }
@@ -177,4 +257,18 @@ Eigen::Vector2d MyBugAlgorithm::rotateVector(Eigen::Vector2d vec, double theta) 
     rotationMatrix << cos(theta), -sin(theta),          
                       sin(theta),  cos(theta);    
     return rotationMatrix * vec;
+}
+
+bool MyBugAlgorithm::isOnMLine(const Eigen::Vector2d& currentPosition, const Eigen::Vector2d& start, const Eigen::Vector2d& goal, double threshold) {
+    Eigen::Vector2d lineVector = goal - start;
+    Eigen::Vector2d toCurrent = currentPosition - start;
+    
+    // Project current position onto the M-line vector
+    double projectionLength = toCurrent.dot(lineVector.normalized());
+    
+    // Get the point on the M-line that corresponds to this projection
+    Eigen::Vector2d projectionPoint = start + projectionLength * lineVector.normalized();
+    
+    // Check if the distance between current position and the projection point is within the threshold
+    return (currentPosition - projectionPoint).norm() < threshold;
 }
