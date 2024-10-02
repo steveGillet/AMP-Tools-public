@@ -116,7 +116,6 @@ amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
 }
 
 
-
 // Define the potential function
 double MyPotentialFunction::operator()(const Eigen::Vector2d& q) const {
     // Attractive Potential
