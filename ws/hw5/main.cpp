@@ -1,16 +1,11 @@
-// This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
-
-// Include the correct homework header
 #include "hw/HW5.h"
-
-// Include any custom headers you created in your workspace
 #include "MyGDAlgorithm.h"
 
 using namespace amp;
 
 int main(int argc, char** argv) {
-    /* Include this line to have different randomized environments every time you run your code (NOTE: this has no affect on grade()) */
+    // Seed the random number generator
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
     // Test your gradient descent algorithm on a random problem.
@@ -21,10 +16,13 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(prob, path);
 
     // Visualize your potential function
-    amp::Visualizer::makeFigure(MyPotentialFunction{}, prob.x_min, prob.x_max, prob.y_min, prob.y_max, 20);
+    // Create a MyPotentialFunction object with the required arguments
+    MyPotentialFunction potential_function(prob.obstacles, prob.q_goal, 1.0, 1.0);
+    amp::Visualizer::makeFigure(potential_function, prob.x_min, prob.x_max, prob.y_min, prob.y_max, 20);
+    
     Visualizer::showFigures();
     
     // Arguments following argv correspond to the constructor arguments of MyGDAlgorithm:
-    HW5::grade<MyGDAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, 1.0, 1.0, 1.0, 1.0);
+    HW5::grade<MyGDAlgorithm>("stephen.gillet@colorado.edu", argc, argv, 1.0, 1.0, 1.0, 1.0);
     return 0;
 }
