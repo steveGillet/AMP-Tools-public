@@ -24,10 +24,17 @@ class MyGDAlgorithm : public amp::GDAlgorithm {
 
 class MyPotentialFunction : public amp::PotentialFunction2D {
     public:
-		// Returns the potential function value (height) for a given 2D point. 
-        virtual double operator()(const Eigen::Vector2d& q) const override {
-            return q[0] * q[0] + q[1] * q[1];
-        }
+        MyPotentialFunction(const std::vector<amp::Polygon>& obstacles, const Eigen::Vector2d& goal, double zetta, double Q_star)
+            : obstacles(obstacles), goal(goal), zetta(zetta), Q_star(Q_star) {}
+
+        // Returns the potential function value (height) for a given 2D point.
+        virtual double operator()(const Eigen::Vector2d& q) const override;
+
+    private:
+        std::vector<amp::Polygon> obstacles;
+        Eigen::Vector2d goal;
+        double zetta;
+        double Q_star;
 
 		virtual Eigen::Vector2d getGradient(const Eigen::Vector2d& q) const override {
             return Eigen::Vector2d(q[0] * q[0],  q[1] * q[1]);
