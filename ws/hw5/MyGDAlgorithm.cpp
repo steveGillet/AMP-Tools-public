@@ -1,6 +1,7 @@
 #include "MyGDAlgorithm.h"
 #include <cmath>
 
+// Implement the plan method for the gradient descent algorithm.
 amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
     amp::Path2D path;
 
