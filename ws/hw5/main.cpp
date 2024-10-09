@@ -5,15 +5,24 @@
 using namespace amp;
 
 int main(int argc, char** argv) {
+    amp::Problem2D prob1 = HW5::getWorkspace1();
+    amp::Path2D path1;
+    MyGDAlgorithm algo(10, 100, 10, 1);
+    path1 = algo.plan(prob1);
+    Visualizer::makeFigure(prob1, path1);
+    MyPotentialFunction potential_function1(prob1.obstacles, prob1.q_goal, 1.0, 1.0);
+    amp::Visualizer::makeFigure(potential_function1, prob1.x_min, prob1.x_max, prob1.y_min, prob1.y_max, 20);
+
+
+
     // Seed the random number generator
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
     // Test your gradient descent algorithm on a random problem.
-    MyGDAlgorithm algo(1.0, 1.0, 1.0, 1.0);
-    Path2D path;
-    Problem2D prob;
-    bool success = HW5::generateAndCheck(algo, path, prob);
-    Visualizer::makeFigure(prob, path);
+    amp::Problem2D prob;
+    amp::Path2D path2;
+    bool success2 = HW5::generateAndCheck(algo, path2, prob);
+    Visualizer::makeFigure(prob, path2);
 
     // Visualize your potential function
     Visualizer::makeFigure(MyPotentialFunction{}, prob, 30);
