@@ -16,6 +16,17 @@ int main(int argc, char** argv) {
 
 
     // Seed the random number generator
+    amp::Problem2D prob1 = HW5::getWorkspace1();
+    amp::Path2D path1;
+    MyGDAlgorithm algo(10, 100, 10, 1);
+    path1 = algo.plan(prob1);
+    Visualizer::makeFigure(prob1, path1);
+    MyPotentialFunction potential_function1(prob1.obstacles, prob1.q_goal, 1.0, 1.0);
+    amp::Visualizer::makeFigure(potential_function1, prob1.x_min, prob1.x_max, prob1.y_min, prob1.y_max, 20);
+
+
+
+    // Seed the random number generator
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
     // Test your gradient descent algorithm on a random problem.
