@@ -1,6 +1,17 @@
 #include "MyCSConstructors.h"
+#include "HelpfulClass.h"
 
 ////////////////////// THIS IS FROM HW4 //////////////////////
+
+double wrapTo2Pi(double angle) {
+    while (angle < 0) {
+        angle += 2 * M_PI;
+    }
+    while (angle >= 2 * M_PI) {
+        angle -= 2 * M_PI;
+    }
+    return angle;
+}
 
 /* You can just move these classes to shared folder and include them instead of copying them to hw6 project*/
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const {    
@@ -24,7 +35,11 @@ Eigen::Vector2d MyGridCSpace2D::getPointFromCell(std::size_t i, std::size_t j) c
 std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) {
     // Create an object of my custom cspace type (e.g. MyGridCSpace2D) and store it in a unique pointer. 
     // Pass the constructor parameters to std::make_unique()
-    std::unique_ptr<MyGridCSpace2D> cspace_ptr = std::make_unique<MyGridCSpace2D>(m_cells_per_dim, m_cells_per_dim, env.x_min, env.x_max, env.y_min, env.y_max);
+    double theta1_min = 0.0;
+    double theta1_max = 2 * M_PI;
+    double theta2_min = 0.0;
+    double theta2_max = 2 * M_PI;
+    std::unique_ptr<MyGridCSpace2D> cspace_ptr = std::make_unique<MyGridCSpace2D>(m_cells_per_dim, m_cells_per_dim, theta1_min, theta1_max, theta2_min, theta2_max);
     // In order to use the pointer as a regular GridCSpace2D object, we can just create a reference
     MyGridCSpace2D& cspace = *cspace_ptr;
     std::cout << "Constructing C-space for manipulator" << std::endl;
@@ -34,17 +49,13 @@ std::unique_ptr<amp::GridCSpace2D> MyManipulatorCSConstructor::construct(const a
     std::size_t num_cells_x1 = m_cells_per_dim;
 
     // Get the bounds for theta1 and theta2
-    double theta1_min = env.x_min;
-    double theta1_max = env.x_max;
-    double theta2_min = env.y_min;
-    double theta2_max = env.y_max;
 
     // Iterate over all cells in the C-space grid
     for (std::size_t i = 0; i < num_cells_x0; ++i) {
         for (std::size_t j = 0; j < num_cells_x1; ++j) {
             // Convert cell indices to theta1 and theta2
-            double theta1 = theta1_min + (theta1_max - theta1_min) * (static_cast<double>(i) / num_cells_x0);
-            double theta2 = theta2_min + (theta2_max - theta2_min) * (static_cast<double>(j) / num_cells_x1);
+            double theta1 = theta1_min + (i + 0.5) * (theta1_max - theta1_min) / num_cells_x0;
+            double theta2 = theta2_min + (j + 0.5) * (theta2_max - theta2_min) / num_cells_x1;
 
             // Check if the manipulator configuration is in collision
             bool in_collision = false;
@@ -133,7 +144,8 @@ std::unique_ptr<amp::GridCSpace2D> MyPointAgentCSConstructor::construct(const am
 }
 
 amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace, bool isManipulator) {
-    // Downcast to MyGridCSpace2D to access the custom methods
+    // ... [initialization code remains the same]
+        // Downcast to MyGridCSpace2D to access the custom methods
     const MyGridCSpace2D& my_cspace = static_cast<const MyGridCSpace2D&>(grid_cspace);
 
     std::size_t num_cells_x = my_cspace.getX0Cells();
@@ -156,24 +168,26 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
     }
     wavefront_grid[goal_cell.first][goal_cell.second] = 2;
 
-    // Propagate wavefront
+    // Wavefront propagation with proper index handling
     int current_value = 2;
     bool changed = true;
     while (changed) {
         changed = false;
-        for (std::size_t i = 0; i < num_cells_x; ++i) {
-            for (std::size_t j = 0; j < num_cells_y; ++j) {
+        for (int i = 0; i < static_cast<int>(num_cells_x); ++i) {
+            for (int j = 0; j < static_cast<int>(num_cells_y); ++j) {
                 if (wavefront_grid[i][j] == current_value) {
-                    // Check neighbors
-                    for (int dx = -1; dx <= 1; ++dx) {
-                        for (int dy = -1; dy <= 1; ++dy) {
-                            if (dx == 0 && dy == 0) continue;
-                            std::size_t ni = i + dx;
-                            std::size_t nj = j + dy;
-                            if (ni < num_cells_x && nj < num_cells_y && wavefront_grid[ni][nj] == 0) {
-                                wavefront_grid[ni][nj] = current_value + 1;
-                                changed = true;
-                            }
+                    const std::pair<int, int> offsets[] = {
+                        {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+                        {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
+                    };
+                    for (const auto& [dx, dy] : offsets) {
+                        int ni = i + dx;
+                        int nj = j + dy;
+                        if (ni >= 0 && ni < static_cast<int>(num_cells_x) &&
+                            nj >= 0 && nj < static_cast<int>(num_cells_y) &&
+                            wavefront_grid[ni][nj] == 0) {
+                            wavefront_grid[ni][nj] = current_value + 1;
+                            changed = true;
                         }
                     }
                 }
@@ -182,33 +196,40 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
         ++current_value;
     }
 
-    // Backtrack from init to goal
+    // Backtracking with proper index handling
     amp::Path2D path;
-    std::pair<std::size_t, std::size_t> current = init_cell;
-    while (current != goal_cell) {
-        // Convert current cell to configuration space coordinates
+    std::pair<int, int> current = {static_cast<int>(init_cell.first), static_cast<int>(init_cell.second)};
+    current_value = wavefront_grid[current.first][current.second];
+    while (current != std::make_pair(static_cast<int>(goal_cell.first), static_cast<int>(goal_cell.second))) {
         Eigen::Vector2d point = my_cspace.getPointFromCell(current.first, current.second);
         path.waypoints.push_back(point);
 
-        // Find neighbor with lowest value
-        std::pair<std::size_t, std::size_t> next_cell = current;
-        int lowest_value = std::numeric_limits<int>::max();
-        for (int dx = -1; dx <= 1; ++dx) {
-            for (int dy = -1; dy <= 1; ++dy) {
-                if (dx == 0 && dy == 0) continue;
-                std::size_t ni = current.first + dx;
-                std::size_t nj = current.second + dy;
-                if (ni < num_cells_x && nj < num_cells_y && wavefront_grid[ni][nj] > 0 && wavefront_grid[ni][nj] < lowest_value) {
-                    lowest_value = wavefront_grid[ni][nj];
-                    next_cell = {ni, nj};
-                }
+        const std::pair<int, int> offsets[] = {
+                        {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+                        {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
+                    };
+        bool found_next = false;
+        for (const auto& [dx, dy] : offsets) {
+            int ni = current.first + dx;
+            int nj = current.second + dy;
+            if (ni >= 0 && ni < static_cast<int>(num_cells_x) &&
+                nj >= 0 && nj < static_cast<int>(num_cells_y) &&
+                wavefront_grid[ni][nj] == current_value - 1) {
+                current = {ni, nj};
+                current_value = wavefront_grid[ni][nj];
+                found_next = true;
+                break;
             }
         }
-        current = next_cell;
+        if (!found_next) {
+            throw std::runtime_error("No valid path found during backtracking.");
+        }
     }
-
     // Add goal to path
     path.waypoints.push_back(q_goal);
+
+    // Reverse the path if necessary
+    std::reverse(path.waypoints.begin(), path.waypoints.end());
 
     // Handle manipulator-specific considerations
     if (isManipulator) {
@@ -219,6 +240,7 @@ amp::Path2D MyWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_init, co
 
     return path;
 }
+
 
 
 bool MyManipulatorCSConstructor::isPointInPolygon(const Eigen::Vector2d& point, const amp::Polygon& polygon) const {
