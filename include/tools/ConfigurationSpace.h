@@ -153,6 +153,7 @@ class GridCSpace2D : public ConfigurationSpace2D, public DenseArray2D<bool> {
         /// @param x1 Value of the second configuration space variable
         /// @return A pair (i, j) of indices that correspond to the cell that (x0, x1) is in
         virtual std::pair<std::size_t, std::size_t> getCellFromPoint(double x0, double x1) const = 0;
+        virtual Eigen::Vector2d getPointFromCell(int cellX, int cellY) const = 0;
 
         /*****************************************/
 

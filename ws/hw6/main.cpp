@@ -14,20 +14,14 @@ int main(int argc, char** argv) {
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
     // You will need your 2-link manipulator from HW4
-    MyManipulator2D manipulator({1.0, 1.0});
+    MyManipulator2D manipulator;
     Problem2D point_problem = HW2::getWorkspace1();
-    Problem2D manip_problem = HW6::getHW4Problem2();
+    Problem2D manip_problem = HW6::getHW4Problem3();
     
     // Construct point-agent and manipulator cspace instances.
-    double desired_resolution = 0.25;
-    std::size_t n_cells_x = static_cast<std::size_t>((point_problem.x_max - point_problem.x_min) / desired_resolution);
-    std::size_t n_cells_y = static_cast<std::size_t>((point_problem.y_max - point_problem.y_min) / desired_resolution);
-    std::size_t n_cells = std::max(n_cells_x, n_cells_y);
+    std::size_t n_cells = 50;
     std::shared_ptr<MyPointAgentCSConstructor> point_agent_ctor = std::make_shared<MyPointAgentCSConstructor>(n_cells);
-    std::size_t dynamic_n_cells_x = std::max(static_cast<std::size_t>((manip_problem.x_max - manip_problem.x_min) / desired_resolution), static_cast<std::size_t>(50));
-    std::size_t dynamic_n_cells_y = std::max(static_cast<std::size_t>((manip_problem.y_max - manip_problem.y_min) / desired_resolution), static_cast<std::size_t>(50));
-    n_cells = std::max(dynamic_n_cells_x, dynamic_n_cells_y);
-    std::shared_ptr<MyManipulatorCSConstructor> manipulator_ctor = std::make_shared<MyManipulatorCSConstructor>(50);
+    std::shared_ptr<MyManipulatorCSConstructor> manipulator_ctor = std::make_shared<MyManipulatorCSConstructor>(n_cells);
     std::shared_ptr<WaveFrontAlgorithm> wf_algo = std::make_shared<MyWaveFrontAlgorithm>();
     
     // Combine your wavefront planner with a cspace object (you do not need to modify these classes).
@@ -43,7 +37,7 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(manip_problem, manipulator, trajectory);
     Visualizer::makeFigure(*manip_algo.getCSpace(), trajectory);
 
-    // Exercise 3
+    // For Exercise 3, you will need to implement the A* algorithm.
     ShortestPathProblem problem = HW6::getEx3SPP();
     LookupSearchHeuristic heuristic = HW6::getEx3Heuristic();
     MyAStarAlgo algo;

@@ -1,109 +1,91 @@
 #include "ManipulatorSkeleton.h"
 #include <Eigen/Dense>
 #include <cmath>
-#include "HelpfulClass.h"
 
 // Constructor: Initialize the manipulator with custom link lengths
-MyManipulator2D::MyManipulator2D(const std::vector<double>& link_lengths)
-    : LinkManipulator2D(link_lengths) // Now using dynamic link lengths
+MyManipulator2D::MyManipulator2D()
+    : LinkManipulator2D({1.0, 1.0})  // Default to a 3-link manipulator, modify lengths as needed
 {}
 
-// Forward kinematics: Calculate the position of a specific joint dynamically
+// Forward kinematics: Calculate the position of a specific joint
 Eigen::Vector2d MyManipulator2D::getJointLocation(const amp::ManipulatorState& state, uint32_t joint_index) const {
+    // Extract joint angles from the state (theta1, theta2, theta3)
+    double theta1 = state[0];
+    double theta2 = state[1];
+    // double theta3 = state[2];
+
     const std::vector<double>& link_lengths = getLinkLengths();
-    std::size_t num_links = link_lengths.size();
+    double a1 = link_lengths[0];
+    double a2 = link_lengths[1];
+    // double a3 = link_lengths[2];
 
-    if (joint_index > num_links) {
-        throw std::out_of_range("Invalid joint index");
+    // Base position (joint 0)
+    Eigen::Vector2d joint0(0.0, 0.0);
+
+    // Joint 1 position
+    Eigen::Vector2d joint1 = joint0 + a1 * Eigen::Vector2d(cos(theta1), sin(theta1));
+
+    // Joint 2 position
+    Eigen::Vector2d joint2 = joint1 + a2 * Eigen::Vector2d(cos(theta1 + theta2), sin(theta1 + theta2));
+
+    // Joint 3 position (end-effector)
+    // Eigen::Vector2d joint3 = joint2 + a3 * Eigen::Vector2d(cos(theta1 + theta2 + theta3), sin(theta1 + theta2 + theta3));
+
+    // Return the position of the requested joint
+    if (joint_index == 0) {
+        return joint0;
+    } else if (joint_index == 1) {
+        return joint1;
+    } else if (joint_index == 2) {
+        return joint2;
+    } else {
+        return Eigen::Vector2d(0.0, 0.0);
     }
-
-    Eigen::Vector2d joint_pos(0.0, 0.0);
-    double theta_accum = 0.0;
-
-    for (std::size_t i = 0; i < joint_index; ++i) {
-        theta_accum += state[i];
-        joint_pos += link_lengths[i] * Eigen::Vector2d(cos(theta_accum), sin(theta_accum));
-    }
-
-    return joint_pos;
 }
 
 
-// Inverse kinematics: For a basic 2-DOF or 3-DOF, inverse kinematics becomes tricky for more than 2-3 links.
+// Inverse kinematics: Calculate joint angles from end-effector location
 amp::ManipulatorState MyManipulator2D::getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const {
-    
-    // Simplified inverse kinematics for 2 or 3 links.
-    const std::vector<double>& link_lengths = getLinkLengths();
-    std::size_t num_links = link_lengths.size();
-
-    if (num_links != 2 && num_links != 3) {
-        throw std::runtime_error("Inverse kinematics only implemented for 2 or 3 links");
-    }
-
+    // Get the desired end-effector position (x, y)
     double x = end_effector_location[0];
     double y = end_effector_location[1];
 
-    std::cout << "End Effector Location " << x << " : " << y << std::endl;
-    
-    double r = sqrt(x * x + y * y); // Distance to end effector
+    // Get link lengths
+    const std::vector<double>& link_lengths = getLinkLengths();
+    double a1 = link_lengths[0];
+    double a2 = link_lengths[1];
+    // double a3 = link_lengths[2];
 
-    if (r > std::accumulate(link_lengths.begin(), link_lengths.end(), 0.0)) {
-        throw std::runtime_error("Target out of reach.");
-    }
+    // double theta1 = atan2(y, x);
 
-    // Inverse kinematics math (for 2 or 3 link manipulator)
+    // Distance from the base to the end-effector
+    double r = sqrt(x * x + y * y);
 
-    if (num_links == 2) {
-        double a1 = link_lengths[0];
-        double a2 = link_lengths[1];
+    // Standard 2-link IK formulas
+    double cos_theta2 = (x*x + y*y - a1*a1 - a2*a2) / (2 * a1 * a2);
+    // Clamp cos_theta2 to [-1, 1] to handle floating-point errors
+    // cos_theta2 = std::min(1.0, std::max(-1.0, cos_theta2));
 
-        // Standard 2-link IK formulas
-        double cos_theta2 = (x*x + y*y - a1*a1 - a2*a2) / (2 * a1 * a2);
-        // Clamp cos_theta2 to [-1, 1] to handle floating-point errors
-        cos_theta2 = std::min(1.0, std::max(-1.0, cos_theta2));
+    // Choose between elbow-up and elbow-down solutions
+    double sin_theta2_positive = sqrt(1 - cos_theta2 * cos_theta2);
+    double sin_theta2_negative = -sin_theta2_positive;
 
-        // Choose between elbow-up and elbow-down solutions
-        double sin_theta2_positive = sqrt(1 - cos_theta2 * cos_theta2);
-        double sin_theta2_negative = -sin_theta2_positive;
+    // Let's choose the elbow-up solution (positive sin_theta2)
+    double sin_theta2 = sin_theta2_negative;
+    double theta2 = atan2(sin_theta2, cos_theta2);
 
-        // Let's choose the elbow-up solution (positive sin_theta2)
-        double sin_theta2 = sin_theta2_positive;
-        double theta2 = atan2(sin_theta2, cos_theta2);
+    double k1 = a1 + a2 * cos_theta2;
+    double k2 = a2 * sin_theta2;
+    double theta1 = atan2(y, x) - atan2(k2, k1);
 
-        double k1 = a1 + a2 * cos_theta2;
-        double k2 = a2 * sin_theta2;
-        double theta1 = atan2(y, x) - atan2(k2, k1);
+    std::cout << "theta 1: " << theta1 << ". theta 2: " << theta2;
 
-        // Normalize angles to [0, 2π)
-        theta1 = fmod(theta1 + 2 * M_PI, 2 * M_PI);
-        theta2 = fmod(theta2 + 2 * M_PI, 2 * M_PI);
+    // Step 4: Build the configuration
+    amp::ManipulatorState joint_angles(2);
+    joint_angles.setZero(); // Initialize angles to zero
+    joint_angles(0) = theta1;
+    joint_angles(1) = theta2; // You may need to adjust the signs depending on your coordinate system
+    // joint_angles(2) = theta3;
 
-        amp::ManipulatorState joint_angles(2);
-        joint_angles[0] = theta1;
-        joint_angles[1] = theta2;
-
-        std::cout << "Joint angles: theta1 = " << joint_angles[0]
-                  << ", theta2 = " << joint_angles[1] << std::endl;
-
-        return joint_angles;
-    } else {
-        // Extended IK for 3-link case
-        double theta1 = atan2(y, x);
-        double a1 = link_lengths[0];
-        double a2 = link_lengths[1];
-        double a3 = link_lengths[2];
-        
-        double relativeX = x - a1 * cos(theta1);
-        double relativeY = y - a1 * sin(theta1);
-    
-        double r2 = sqrt(relativeX * relativeX + relativeY * relativeY);
-        double theta3 = M_PI - acos((r2 * r2 - a2 * a2 - a3 * a3) / (-2 * a2 * a3));
-        double theta2 = atan2(relativeY, relativeX) - atan2(a3 * sin(theta3), a2 + a3 * cos(theta3));
-
-        amp::ManipulatorState joint_angles(3);
-        joint_angles[0] = theta1;
-        joint_angles[1] = theta2;
-        joint_angles[2] = theta3;
-        return joint_angles;
-    }
+    return joint_angles;
 }
