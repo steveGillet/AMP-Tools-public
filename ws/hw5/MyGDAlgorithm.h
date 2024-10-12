@@ -36,3 +36,4 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
         double zetta;
         double Q_star;
 };
+
