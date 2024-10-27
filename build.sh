@@ -1,4 +1,5 @@
 #! /bin/bash
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/bin/openssl-1.1/lib
 
 debug_flag=""
 while [[ $# -gt 0 ]]; do 

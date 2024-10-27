@@ -20,7 +20,7 @@ void timer_example() {
 
 int main(int argc, char** argv) {
     // Run timer example (useful for benchmarking)
-    timer_example();
+    // timer_example();
 
     // Initialize Workspace 1 with 3 agents
     amp::RNG::seed(amp::RNG::randiUnbounded());

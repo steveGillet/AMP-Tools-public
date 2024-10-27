@@ -24,6 +24,8 @@ endif()
 # C++ libs
 find_package (Eigen3 3.3.4 REQUIRED NO_MODULE)
 find_package(OpenSSL REQUIRED)
+set(OPENSSL_ROOT_DIR /usr/bin/openssl-1.1)
+set(OPENSSL_LIBRARIES /usr/bin/openssl-1.1/lib)
 if(AMP_BUILD_LIB)
     find_package(Boost 1.70 REQUIRED)
 endif()
