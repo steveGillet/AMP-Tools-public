@@ -137,6 +137,13 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
     Eigen::VectorXd combinedStart(dimensions);
     Eigen::VectorXd combinedGoal(dimensions);
 
+    double minRadius = DBL_MAX;
+    for (auto agent : problem.agent_properties){
+        if(agent.radius < minRadius){
+            minRadius = agent.radius;
+        }
+    }
+
     // Initialize combined start and goal states
     for (int i = 0; i < problem.numAgents(); i++) {
         combinedStart.segment<2>(i * 2) = problem.agent_properties[i].q_init;
@@ -147,10 +154,13 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
     nodes[0] = combinedStart;
     int currentNodeIndex = 1;
 
+    std::vector<bool> agentReachedGoal(problem.numAgents(), false);
+    int agentsAtGoal = 0;
+
     // Sampling random points
     int counter = 0;
     bool pathFound = false;
-    while (counter < n && !pathFound) {
+    while (counter < n && agentsAtGoal < problem.numAgents()) {
         Eigen::VectorXd point(dimensions);
         std::bernoulli_distribution bernoulli(p);
 
@@ -178,16 +188,16 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
             } 
         }
 
-        Eigen::VectorXd step = r * (point - qNear).normalized();
-        Eigen::VectorXd qNew = qNear + step;
-
-        double distanceStep = (qNew - qNear).norm();
-        double minRadius = DBL_MAX;
-        for (auto agent : problem.agent_properties){
-            if(agent.radius < minRadius){
-                minRadius = agent.radius;
+        // Generate a new point qNew, but only for agents that haven't reached their goals
+        Eigen::VectorXd qNew = qNear;
+        for (int i = 0; i < problem.numAgents(); i++) {
+            if (!agentReachedGoal[i]) {
+                qNew.segment<2>(i * 2) = qNear.segment<2>(i * 2) + r * (point.segment<2>(i * 2) - qNear.segment<2>(i * 2)).normalized();
             }
         }
+
+        double distanceStep = (qNew - qNear).norm();
+        
         int numSteps = static_cast<int>(std::ceil(distanceStep / (minRadius/2)));
 
         // checking individual agents in obstacles
@@ -195,6 +205,8 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
         for (int currentStep = 0; currentStep <= numSteps; currentStep++){
             Eigen::VectorXd currentPoint = qNear + (qNew - qNear) * (static_cast<double>(currentStep) / numSteps);
             for (int i = 0; i < problem.numAgents(); i++) {
+                if(!agentReachedGoal[i]){
+
                 Eigen::Vector2d agentPosition = currentPoint.segment<2>(i * 2);
                 for (auto obstacle : problem.obstacles) {
                     if (isCircleInPolygon(agentPosition, problem.agent_properties[i].radius, obstacle)){
@@ -203,10 +215,11 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
                     } 
                 }
                 for(int j = 0; j < problem.numAgents(); j++){
-                    if(i != j && (currentPoint.segment<2>(i * 2) - currentPoint.segment<2>(j * 2)).norm() < problem.agent_properties[i].radius + problem.agent_properties[j].radius){
+                    if(!agentReachedGoal[j]&& i != j && (currentPoint.segment<2>(i * 2) - currentPoint.segment<2>(j * 2)).norm() < problem.agent_properties[i].radius + problem.agent_properties[j].radius){
                         pointInObstacle = true;
                         break;
                     }
+                }
                 }
             }
         }
@@ -220,15 +233,18 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
 
             currentNodeIndex++;
             
-            if((qNew - combinedGoal).norm() < epsilon){
-                pathFound = true;
-                if(qNew != combinedGoal){
-                    nodes[currentNodeIndex] = combinedGoal;
-                    points.push_back(combinedGoal);
-                    edges.push_back(std::make_tuple(currentNodeIndex - 1, currentNodeIndex, (qNew - combinedGoal).norm()));
-                    currentNodeIndex++;
-                } 
-            } 
+            for (int i = 0; i < problem.numAgents(); i++){
+                if (!agentReachedGoal[i] && (qNew.segment<2>(i*2) - problem.agent_properties[i].q_goal).norm() < epsilon){
+                    agentReachedGoal[i] = true;
+                    agentsAtGoal++;
+                    if(agentsAtGoal == problem.numAgents()){
+                        nodes[currentNodeIndex] = combinedGoal;
+                        points.push_back(combinedGoal);
+                        edges.push_back(std::make_tuple(currentNodeIndex - 1, currentNodeIndex, (qNew - combinedGoal).norm()));
+                        currentNodeIndex++;
+                    } 
+                }
+            }
         };
         
 
@@ -268,6 +284,280 @@ std::tuple<amp::MultiAgentPath2D, MyAStarAlgo::GraphSearchResult, std::map<amp::
 
     return std::make_tuple(path, result, nodes);
 }
+
+// std::tuple<amp::Path2D, bool> MyRRT::planDecentralized(
+//     const amp::MultiAgentProblem2D& problem, 
+//     int agentIndex, 
+//     const amp::MultiAgentPath2D& previousPaths, // Paths of already planned agents
+//     int maxRetries
+// ) {
+//     amp::Path2D agentPath;
+//     bool pathFound = false;
+//     int attempt = 0;
+//     static std::random_device rd;
+//     static std::mt19937 gen(rd());
+
+//     Eigen::Vector2d start = problem.agent_properties[agentIndex].q_init;
+//     Eigen::Vector2d goal = problem.agent_properties[agentIndex].q_goal;
+
+//     while (!pathFound && attempt < maxRetries) {
+//         std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>();
+//         std::map<amp::Node, Eigen::Vector2d> nodes;
+//         nodes[0] = start;  // Ensure start node is included
+//         int currentNodeIndex = 1;
+//         std::vector<std::tuple<amp::Node, amp::Node, double>> edges;
+
+//         // Sample random points to create the roadmap
+//         for (int i = 0; i < 7500; ++i) {  // Adjust sample size if needed
+//             Eigen::Vector2d randomPoint;
+//             if (std::bernoulli_distribution(0.05)(gen)) {
+//                 randomPoint = goal;
+//             } else {
+//                 std::uniform_real_distribution<> xdis(problem.x_min, problem.x_max);
+//                 std::uniform_real_distribution<> ydis(problem.y_min, problem.y_max);
+//                 randomPoint = Eigen::Vector2d(xdis(gen), ydis(gen));
+//             }
+
+//             Eigen::Vector2d nearestPoint = nodes[0];
+//             double minDistance = DBL_MAX;
+//             int nearestIndex = 0;
+
+//             for (const auto& [index, node] : nodes) {
+//                 double dist = (node - randomPoint).norm();
+//                 if (dist < minDistance) {
+//                     nearestPoint = node;
+//                     nearestIndex = index;
+//                     minDistance = dist;
+//                 }
+//             }
+
+//             Eigen::Vector2d direction = (randomPoint - nearestPoint).normalized();
+//             Eigen::Vector2d newPoint = nearestPoint + 0.5 * direction;  // Step size of 0.5
+
+//             bool collisionFree = true;
+//             for (const auto& obstacle : problem.obstacles) {
+//                 if (isCircleInPolygon(newPoint, problem.agent_properties[agentIndex].radius, obstacle)) {
+//                     collisionFree = false;
+//                     break;
+//                 }
+//             }
+
+//             if (collisionFree) {
+//                 nodes[currentNodeIndex] = newPoint;
+//                 edges.emplace_back(nearestIndex, currentNodeIndex, minDistance);
+//                 currentNodeIndex++;
+//             }
+//         }
+
+//         // Ensure goal node is included
+//         nodes[currentNodeIndex] = goal;
+
+//         // Connect nodes in graph
+//         for (const auto& [from, to, weight] : edges) {
+//             graphPtr->connect(from, to, weight);
+//         }
+
+//         // Run A* search on the generated graph
+//         amp::ShortestPathProblem sp_problem;
+//         sp_problem.graph = graphPtr;
+//         sp_problem.init_node = 0;
+//         sp_problem.goal_node = currentNodeIndex;
+
+//         MyAStarAlgo astar;
+//         ZeroHeuristic heuristic;
+//         MyAStarAlgo::GraphSearchResult result = astar.search(sp_problem, heuristic);
+
+//         // Ensure start and goal are included even if A* fails or if they are not already in the result
+//         agentPath.waypoints.clear();
+//         agentPath.waypoints.push_back(start);  // Start with start node
+
+//         if (result.success) {
+//             for (const auto& node : result.node_path) {
+//                 agentPath.waypoints.push_back(nodes[node]);
+//             }
+//         }
+
+//         if (agentPath.waypoints.back() != goal) {
+//             agentPath.waypoints.push_back(goal);  // Ensure goal node is the last waypoint
+//         }
+
+//         // Collision check with previous paths
+//         pathFound = true;
+//         for (size_t i = 0; i < agentPath.waypoints.size(); ++i) {
+//             for (const auto& otherAgentPath : previousPaths.agent_paths) {
+//                 if (i < otherAgentPath.waypoints.size() && 
+//                     (agentPath.waypoints[i] - otherAgentPath.waypoints[i]).norm() < 
+//                     problem.agent_properties[agentIndex].radius * 2) {
+//                     pathFound = false;
+//                     break;
+//                 }
+//             }
+//             if (!pathFound) break;
+//         }
+
+//         attempt++;
+//     }
+
+//     return {agentPath, pathFound};
+// }
+
+
+amp::Path2D MyRRT::planDecentralized(
+    const amp::MultiAgentProblem2D& problem,
+    int agentIndex,
+    const amp::MultiAgentPath2D& previousPaths,
+    int n,
+    double r,
+    double epsilon,
+    double p
+) {
+    bool failedPath = true;
+    amp::Path2D path;
+    int maxRetries = 40;
+    int attempt = 0;
+    double pAdjust = p;
+
+    while (failedPath && attempt < maxRetries) {
+        attempt++;
+        path = amp::Path2D(); // Reset the path
+        failedPath = false;
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::shared_ptr<amp::Graph<double>> graphPtr = std::make_shared<amp::Graph<double>>();
+
+        Eigen::Vector2d start = problem.agent_properties[agentIndex].q_init;
+        Eigen::Vector2d goal = problem.agent_properties[agentIndex].q_goal;
+
+        std::vector<std::tuple<amp::Node, amp::Node, double>> edges;
+        std::map<amp::Node, Eigen::Vector2d> nodes;
+        std::vector<Eigen::Vector2d> points;
+        points.push_back(start);
+        nodes[0] = start;
+        int currentNodeIndex = 1;
+
+        int counter = 0;
+        bool pathFound = false;
+
+        while (counter < n && !pathFound) {
+            Eigen::Vector2d point;
+            std::bernoulli_distribution bernoulli(pAdjust);
+            if (bernoulli(gen)) {
+                point = goal;
+            } else {
+                std::uniform_real_distribution<> xdis(problem.x_min, problem.x_max);
+                std::uniform_real_distribution<> ydis(problem.y_min, problem.y_max);
+                point = Eigen::Vector2d(xdis(gen), ydis(gen));
+            }
+
+            // Find nearest node
+            Eigen::Vector2d qNear = nodes[0];
+            double distance = DBL_MAX;
+            int qNearIndex = 0;
+            for (int i = 0; i < nodes.size(); i++) {
+                double currentDistance = (point - nodes[i]).norm();
+                if (distance > currentDistance) {
+                    qNear = nodes[i];
+                    qNearIndex = i;
+                    distance = currentDistance;
+                }
+            }
+
+            // Generate qNew with slight perturbation
+            Eigen::Vector2d step = r * (point - qNear).normalized();
+            std::uniform_real_distribution<> perturb(-0.1 * r, 0.1 * r);
+            Eigen::Vector2d qNew = qNear + step + Eigen::Vector2d(perturb(gen), perturb(gen));
+
+            bool pointInObstacle = false;
+            for (const auto& obstacle : problem.obstacles) {
+                if (isCircleInPolygon(qNew, problem.agent_properties[agentIndex].radius, obstacle)) {
+                    pointInObstacle = true;
+                    break;
+                }
+            }
+
+            bool edgeIntersectsObstacle = false;
+            for (const auto& obstacle : problem.obstacles) {
+                const auto& vertices = obstacle.verticesCCW();
+                for (size_t i = 0; i < vertices.size(); ++i) {
+                    Eigen::Vector2d start = vertices[i];
+                    Eigen::Vector2d end = vertices[(i + 1) % vertices.size()];
+                    if (doLinesIntersect(qNear, qNew, start, end)) {
+                        edgeIntersectsObstacle = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!pointInObstacle && !edgeIntersectsObstacle) {
+                nodes[currentNodeIndex] = qNew;
+                points.push_back(qNew);
+                edges.push_back(std::make_tuple(qNearIndex, currentNodeIndex, r));
+                currentNodeIndex++;
+
+                if ((qNew - goal).norm() < epsilon) {
+                    pathFound = true;
+                    if (qNew != goal) {
+                        nodes[currentNodeIndex] = goal;
+                        points.push_back(goal);
+                        edges.push_back(std::make_tuple(currentNodeIndex - 1, currentNodeIndex, (qNew - goal).norm()));
+                        currentNodeIndex++;
+                    }
+                }
+            }
+            counter++;
+        }
+
+        for (const auto& [from, to, weight] : edges) {
+            graphPtr->connect(from, to, weight);
+        }
+
+        amp::ShortestPathProblem sp_problem;
+        sp_problem.graph = graphPtr;
+        sp_problem.init_node = 0;
+        sp_problem.goal_node = nodes.size() - 1;
+        MyAStarAlgo astar;
+        ZeroHeuristic heuristic;
+        MyAStarAlgo::GraphSearchResult result = astar.search(sp_problem, heuristic);
+
+        for (auto node : result.node_path) {
+            path.waypoints.push_back(nodes[node]);
+        }
+
+        if (path.waypoints.empty() || path.waypoints.front() != start) {
+            path.waypoints.insert(path.waypoints.begin(), start);
+        }
+        if (path.waypoints.back() != goal) {
+            path.waypoints.push_back(goal);
+        }
+
+        for (const auto& point : path.waypoints) {
+            for (const auto& previousPath : previousPaths.agent_paths) {
+                for (const auto& previousPoint : previousPath.waypoints) {
+                    if ((point - previousPoint).norm() < problem.agent_properties[agentIndex].radius * 2) {
+                        failedPath = true;
+                        break;
+                    }
+                }
+                if (failedPath) break;
+            }
+            if (failedPath) break;
+        }
+
+        if (failedPath) {
+            std::cout << "Collision detected on attempt " << attempt << ", retrying...\n";
+            pAdjust = std::min(pAdjust + 0.05, 0.95);
+        }
+    }
+
+    if (attempt >= maxRetries) {
+        std::cout << "Warning: Unable to find a collision-free path after " << maxRetries << " attempts.\n";
+    }
+
+    return path;
+}
+
+
+
 
 // Implement path smoothing with shortcutting
 void smoothPath(amp::MultiAgentPath2D& path, const amp::MultiAgentProblem2D& problem) {

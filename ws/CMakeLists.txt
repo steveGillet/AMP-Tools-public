@@ -19,21 +19,23 @@ endif()
 foreach(SUBDIR ${HW_SUBDIRECTORIES})
     if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${SUBDIR} AND NOT SUBDIR STREQUAL "shared" AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${SUBDIR}/IGNORE")
         file(GLOB_RECURSE USER_SOURCES "${SUBDIR}/*.cpp")
-        set(TARGET_NAME "main-${SUBDIR}")
-        add_executable(${TARGET_NAME} ${USER_SOURCES})
-        target_link_libraries(${TARGET_NAME} PRIVATE
-            yaml-cpp
-            Eigen3::Eigen
-            AMPCorePrivate
-            AMPCorePublic
-        )
-        target_include_directories(${TARGET_NAME} PUBLIC
-            ${AMP_INCLUDE_DIRS}
-            ${AMP_DEPENDENCY_INCLUDE_DIRS}
-        )
-        if(TARGET user_library)
-            target_link_libraries(${TARGET_NAME} PRIVATE user_library)
-            target_include_directories(${TARGET_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/shared")
+        if(USER_SOURCES)
+            set(TARGET_NAME "main-${SUBDIR}")
+            add_executable(${TARGET_NAME} ${USER_SOURCES})
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                yaml-cpp
+                Eigen3::Eigen
+                AMPCorePrivate
+                AMPCorePublic
+            )
+            target_include_directories(${TARGET_NAME} PUBLIC
+                ${AMP_INCLUDE_DIRS}
+                ${AMP_DEPENDENCY_INCLUDE_DIRS}
+            )
+            if(TARGET user_library)
+                target_link_libraries(${TARGET_NAME} PRIVATE user_library)
+                target_include_directories(${TARGET_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/shared")
+            endif()
         endif()
 
         if(AMP_EXCLUDE_VIS)
