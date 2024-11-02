@@ -34,6 +34,10 @@ int main(int argc, char** argv) {
     amp::Path2D path2;
     bool success2 = HW5::generateAndCheck(algo, path2, prob);
     Visualizer::makeFigure(prob, path2);
+    amp::Problem2D prob;
+    amp::Path2D path2;
+    bool success2 = HW5::generateAndCheck(algo, path2, prob);
+    Visualizer::makeFigure(prob, path2);
 
     // Visualize your potential function
     // Create a MyPotentialFunction object with the required arguments
