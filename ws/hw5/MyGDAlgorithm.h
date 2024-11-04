@@ -35,5 +35,13 @@ class MyPotentialFunction : public amp::PotentialFunction2D {
         Eigen::Vector2d goal;
         double zetta;
         double Q_star;
+<<<<<<< HEAD
 };
 
+=======
+
+		virtual Eigen::Vector2d getGradient(const Eigen::Vector2d& q) const override {
+            return Eigen::Vector2d(q[0] * q[0],  q[1] * q[1]);
+        }
+};
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)

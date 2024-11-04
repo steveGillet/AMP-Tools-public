@@ -5,6 +5,7 @@
 using namespace amp;
 
 int main(int argc, char** argv) {
+<<<<<<< HEAD
     amp::Problem2D prob1 = HW5::getWorkspace1();
     amp::Path2D path1;
     MyGDAlgorithm algo(10, 100, 10, 1);
@@ -26,6 +27,8 @@ int main(int argc, char** argv) {
 
 
 
+=======
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
     // Seed the random number generator
     amp::RNG::seed(amp::RNG::randiUnbounded());
 
@@ -40,6 +43,10 @@ int main(int argc, char** argv) {
     Visualizer::makeFigure(prob, path2);
 
     // Visualize your potential function
+<<<<<<< HEAD
+=======
+    Visualizer::makeFigure(MyPotentialFunction{}, prob, 30);
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
     // Create a MyPotentialFunction object with the required arguments
     MyPotentialFunction potential_function(prob.obstacles, prob.q_goal, 1.0, 1.0);
     amp::Visualizer::makeFigure(potential_function, prob.x_min, prob.x_max, prob.y_min, prob.y_max, 20);

@@ -1,6 +1,10 @@
 #include "MyGDAlgorithm.h"
 #include <cmath>
 
+<<<<<<< HEAD
+=======
+// Implement the plan method for the gradient descent algorithm.
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
 amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
     amp::Path2D path;
 
@@ -9,6 +13,7 @@ amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
     path.waypoints.push_back(q);
 
     Eigen::Vector2d q_goal = problem.q_goal;
+<<<<<<< HEAD
     double epsilon = 0.5; // Termination radius
 
     // Parameters
@@ -34,12 +39,30 @@ amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
         // Sum the repulsive contributions from each obstacle
         for (const auto& obstacle : problem.obstacles) {
             // Calculate the center of the obstacle by averaging all vertices
+=======
+    double epsilon = 0.25; // Termination radius
+
+    // Parameters
+    double step_size = eta; // Step size for gradient descent
+
+    // Create the potential function object with the necessary parameters
+    MyPotentialFunction potential_function(problem.obstacles, q_goal, zetta, Q_star);
+
+    while ((q - q_goal).norm() > epsilon) {
+        // Calculate the gradient using the potential function
+        Eigen::Vector2d grad_U_att = zetta * (q - q_goal);
+        Eigen::Vector2d grad_U_rep = Eigen::Vector2d(0, 0);
+
+        // Calculate repulsive gradient
+        for (const auto& obstacle : problem.obstacles) {
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
             Eigen::Vector2d obs_center(0, 0);
             for (const auto& vertex : obstacle.verticesCCW()) {
                 obs_center += vertex;
             }
             obs_center /= obstacle.verticesCCW().size();
 
+<<<<<<< HEAD
             // Calculate bounding radius (maximum distance from center to a vertex)
             double obstacle_size = 0.0;
             for (const auto& vertex : obstacle.verticesCCW()) {
@@ -111,12 +134,36 @@ amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
     } else {
         std::cerr << "Warning: Maximum iteration limit reached without convergence.\n";
     }
+=======
+            double dist = (q - obs_center).norm();
+
+            if (dist < Q_star) {
+                grad_U_rep += (q - obs_center) * (1.0 / dist - 1.0 / Q_star) / (dist * dist);
+            }
+        }
+
+        grad_U_rep *= Q_star;
+
+        // Gradient descent update
+        Eigen::Vector2d grad_U = grad_U_att + grad_U_rep;
+        q -= step_size * grad_U;
+
+        // Add the new waypoint to the path
+        path.waypoints.push_back(q);
+    }
+
+    // Add goal to the path
+    path.waypoints.push_back(q_goal);
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
 
     return path;
 }
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 356823d (got some part of potential function to work, but hits obstacles)
 // Define the potential function
 double MyPotentialFunction::operator()(const Eigen::Vector2d& q) const {
     // Attractive Potential
