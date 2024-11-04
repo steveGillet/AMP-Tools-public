@@ -14,7 +14,10 @@ class MyBugAlgorithm : public amp::BugAlgorithm {
         Eigen::Vector2d getObstacleCenter(const std::vector<Eigen::Vector2d>& vertices);
         Eigen::Vector2d rotateVector(Eigen::Vector2d vec, double theta);
         Eigen::Vector2d tangentVector(const std::vector<Eigen::Vector2d>& vertices, Eigen::Vector2d currentPosition, bool ccwDirection);
+<<<<<<< HEAD
         bool isOnMLine(const Eigen::Vector2d& currentPosition, const Eigen::Vector2d& start, const Eigen::Vector2d& goal, double threshold);
+=======
+>>>>>>> 20d35d2 (bug1 implemented)
     
     private:
         // Add any member variables here...
