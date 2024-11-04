@@ -15,9 +15,13 @@ class MyBugAlgorithm : public amp::BugAlgorithm {
         Eigen::Vector2d rotateVector(Eigen::Vector2d vec, double theta);
         Eigen::Vector2d tangentVector(const std::vector<Eigen::Vector2d>& vertices, Eigen::Vector2d currentPosition, bool ccwDirection);
 <<<<<<< HEAD
+<<<<<<< HEAD
         bool isOnMLine(const Eigen::Vector2d& currentPosition, const Eigen::Vector2d& start, const Eigen::Vector2d& goal, double threshold);
 =======
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+        bool isOnMLine(const Eigen::Vector2d& currentPosition, const Eigen::Vector2d& start, const Eigen::Vector2d& goal, double threshold);
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
     
     private:
         // Add any member variables here...

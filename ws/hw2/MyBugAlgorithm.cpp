@@ -14,10 +14,14 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 
     int counter1 = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
     while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 1000){
 =======
     while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 10000){
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+    while ((currentPosition - problem.q_goal).norm() > stepSize && counter1 < 1000){
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
         counter1++;
         Eigen::Vector2d directionVector = (problem.q_goal - currentPosition).normalized();
         currentPosition += directionVector * stepSize;
@@ -35,10 +39,14 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 
             int counter2 = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
             while (circumnavigated != true && counter2 < 1000){
 =======
             while (circumnavigated != true && counter2 < 10000){
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+            while (circumnavigated != true && counter2 < 1000){
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
                 counter2 ++;
 
                 directionVector = tangentVector(hitObstacle->verticesCCW(), currentPosition, true);
@@ -46,10 +54,14 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 
                 int counter3 = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
                 while (inObstacle(problem.obstacles, currentPosition) && counter3 < 1000){
 =======
                 while (inObstacle(problem.obstacles, currentPosition) && counter3 < 10000){
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+                while (inObstacle(problem.obstacles, currentPosition) && counter3 < 1000){
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
                     counter3++;
                     hitObstacle = inObstacle(problem.obstacles, currentPosition);
 
@@ -84,10 +96,14 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 
                     int counter4 = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
                     while (reachedLeavePoint == false && counter4 < 1000){
 =======
                     while (reachedLeavePoint == false && counter4 < 10000){
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+                    while (reachedLeavePoint == false && counter4 < 1000){
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
                         counter4++;
 
                         directionVector = tangentVector(hitObstacle->verticesCCW(), currentPosition, directionCCW);
@@ -95,10 +111,14 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
                         
                         int counter5 = 4;
 <<<<<<< HEAD
+<<<<<<< HEAD
                         while (inObstacle(problem.obstacles, currentPosition) && counter5 < 1000){
 =======
                         while (inObstacle(problem.obstacles, currentPosition) && counter5 < 10000){
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+                        while (inObstacle(problem.obstacles, currentPosition) && counter5 < 1000){
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
                             counter5++;
 
                             currentPosition -= directionVector * stepSize;
@@ -127,6 +147,9 @@ amp::Path2D MyBugAlgorithm::bug1(const amp::Problem2D& problem){
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
 amp::Path2D MyBugAlgorithm::bug2(const amp::Problem2D& problem){
 
     amp::Path2D path;
@@ -203,8 +226,11 @@ amp::Path2D MyBugAlgorithm::bug2(const amp::Problem2D& problem){
     return path;
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
 std::unique_ptr<amp::Polygon> MyBugAlgorithm::inObstacle(const std::vector<amp::Polygon>& obstacles, const Eigen::Vector2d& stepPosition) {
     for (const auto& obstacle : obstacles){
         const std::vector<Eigen::Vector2d>& vertices = obstacle.verticesCCW();
@@ -282,6 +308,9 @@ Eigen::Vector2d MyBugAlgorithm::rotateVector(Eigen::Vector2d vec, double theta) 
     return rotationMatrix * vec;
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
 
 bool MyBugAlgorithm::isOnMLine(const Eigen::Vector2d& currentPosition, const Eigen::Vector2d& start, const Eigen::Vector2d& goal, double threshold) {
     Eigen::Vector2d lineVector = goal - start;
@@ -296,5 +325,8 @@ bool MyBugAlgorithm::isOnMLine(const Eigen::Vector2d& currentPosition, const Eig
     // Check if the distance between current position and the projection point is within the threshold
     return (currentPosition - projectionPoint).norm() < threshold;
 }
+<<<<<<< HEAD
 =======
 >>>>>>> 20d35d2 (bug1 implemented)
+=======
+>>>>>>> 206f317 (both bugs working hw1 complete, still get stuck in some situations)
