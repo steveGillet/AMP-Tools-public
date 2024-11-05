@@ -18,7 +18,7 @@ std::unordered_map<AgentType, std::function<std::shared_ptr<amp::DynamicAgent>()
 int main(int argc, char** argv) {
     // Select problem, plan, check, and visualize
     int select = 0;
-    KinodynamicProblem2D prob = problems[select];
+    KinodynamicProblem2D prob = problems[2];
     MyKinoRRT kino_planner;
     KinoPath path = kino_planner.plan(prob, *agentFactory[prob.agent_type]());
     HW9::check(path, prob);

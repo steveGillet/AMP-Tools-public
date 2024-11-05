@@ -9,6 +9,42 @@ void MySingleIntegrator::propagate(Eigen::VectorXd& state, Eigen::VectorXd& cont
     state += dt * control;
 };
 
+void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
+    double x = state[0];
+    double y = state[1];
+    double theta = state[2];
+    
+    double u0 = control[0];
+    double uw = control[1];
+    
+    // Update state based on the dynamics
+    state[0] += dt * u0 * cos(theta);  // x' = x + dt * u0 * cos(theta)
+    state[1] += dt * u0 * sin(theta);  // y' = y + dt * u0 * sin(theta)
+    state[2] += dt * uw;               // theta' = theta + dt * uw
+
+    // for (int i = 0; i < state.size(); ++i) {
+    //     state[i] = std::clamp(state[i], problem.q_bounds[i].first, problem.q_bounds[i].second);
+    // }
+}
+
+void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
+    double x = state[0];
+    double y = state[1];
+    double theta = state[2];
+    double sigma = state[3];
+    double omega = state[4];
+    
+    double u1 = control[0];
+    double u2 = control[1];
+    
+    // Update state based on the dynamics
+    state[0] += dt * sigma * cos(theta);  // x' = x + dt * sigma * cos(theta)
+    state[1] += dt * sigma * sin(theta);  // y' = y + dt * sigma * sin(theta)
+    state[2] += dt * omega;               // theta' = theta + dt * omega
+    state[3] += dt * u1;                  // sigma' = sigma + dt * u1
+    state[4] += dt * u2;                  // omega' = omega + dt * u2
+}
+
 // amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent) {
 //     amp::KinoPath path;
 //     Eigen::VectorXd state = problem.q_init;
@@ -45,6 +81,9 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
     std::vector<std::tuple<amp::Node, amp::Node, double>> edges;
     std::map<amp::Node, Eigen::VectorXd> nodes;
     std::vector<Eigen::VectorXd> points;
+    std::map<std::pair<int, int>, Eigen::VectorXd> storedControls;
+    std::map<std::pair<int, int>, double> storedDurations;
+
     points.push_back(problem.q_init);
     nodes[0] = problem.q_init;
     int currentNodeIndex = 1;
@@ -88,6 +127,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
 
         std::vector<Eigen::VectorXd> potentialControls;
         std::vector<Eigen::VectorXd> potentialQnews;
+        std::vector<double> potentialDts;
         int maxAttempts = 50; // will probably have to implement if an infinite loop happens
 
         while(potentialControls.size() < 5){
@@ -121,24 +161,28 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             if(!edgeIntersectsObstacle){
                 potentialControls.push_back(control);
                 potentialQnews.push_back(potentialQnew);
+                potentialDts.push_back(dt);
             }
         }
 
         double closestDistanceToQnew = DBL_MAX;
         Eigen::VectorXd qNew;
         Eigen::VectorXd bestControl;
+        double bestDt;
         for (int i = 0; i < potentialControls.size(); i++) {
             double distance = (potentialQnews[i] - point).norm();
             if (distance < closestDistanceToQnew) {
                 closestDistanceToQnew = distance;
                 bestControl = potentialControls[i];
+                bestDt = potentialDts[i];
                 qNew = potentialQnews[i];
             }
         }
 
         nodes[currentNodeIndex] = qNew;
         points.push_back(qNew);
-
+        storedDurations[{qNearIndex, currentNodeIndex}] = bestDt;
+        storedControls[{qNearIndex, currentNodeIndex}] = bestControl;
         edges.push_back(std::make_tuple(qNearIndex, currentNodeIndex, (qNear - qNew).norm()));
 
         currentNodeIndex++;
@@ -180,15 +224,11 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         int fromNode = *it;
         int toNode = *next_it;
 
-        // Get the start and end states for this segment
-        const Eigen::VectorXd& startState = nodes[fromNode];
-        const Eigen::VectorXd& endState = nodes[toNode];
-
-        // Calculate control and duration to go from startState to endState
-        auto [control, dt] = calculateControlAndDuration(startState, endState, problem);
+        Eigen::VectorXd control = storedControls[{fromNode, toNode}];
+        double dt = storedDurations[{fromNode, toNode}];
 
         // Append endState, control, and duration to the path
-        path.waypoints.push_back(endState);
+        path.waypoints.push_back(nodes[toNode]);
         path.controls.push_back(control);
         path.durations.push_back(dt);
     }
