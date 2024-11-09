@@ -16,10 +16,12 @@ void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& co
     
     double u0 = control[0];
     double uw = control[1];
+
+    double r = 0.25;
     
     // Update state based on the dynamics
-    state[0] += dt * u0 * cos(theta);  // x' = x + dt * u0 * cos(theta)
-    state[1] += dt * u0 * sin(theta);  // y' = y + dt * u0 * sin(theta)
+    state[0] += dt * u0 * r * cos(theta);  // x' = x + dt * u0 * cos(theta)
+    state[1] += dt * u0 * r * sin(theta);  // y' = y + dt * u0 * sin(theta)
     state[2] += dt * uw;               // theta' = theta + dt * uw
 
     // for (int i = 0; i < state.size(); ++i) {
@@ -36,10 +38,12 @@ void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& c
     
     double u1 = control[0];
     double u2 = control[1];
+
+    double r = 0.25;
     
     // Update state based on the dynamics
-    state[0] += dt * sigma * cos(theta);  // x' = x + dt * sigma * cos(theta)
-    state[1] += dt * sigma * sin(theta);  // y' = y + dt * sigma * sin(theta)
+    state[0] += dt * sigma * r * cos(theta);  // x' = x + dt * sigma * cos(theta)
+    state[1] += dt * sigma * r * sin(theta);  // y' = y + dt * sigma * sin(theta)
     state[2] += dt * omega;               // theta' = theta + dt * omega
     state[3] += dt * u1;                  // sigma' = sigma + dt * u1
     state[4] += dt * u2;                  // omega' = omega + dt * u2
