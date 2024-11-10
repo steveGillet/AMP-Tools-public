@@ -67,6 +67,7 @@ struct KinoPath : Path {
 
     /// @brief Duration of each control input
     std::vector<double> durations;
+    double pathCost;
 };
 
 /// @brief Given a path that has waypoints wrapped within a hyper-cube from `wrapped_lower_bounds` to `wrapped_upper_bounds`, unwrap the waypoints to

@@ -27,7 +27,7 @@ class MySecondOrderUnicycle : public amp::DynamicAgent {
 
 class MySimpleCar : public amp::DynamicAgent {
     public:
-        virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) override {};
+        virtual void propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) override;
 };
 bool isWithinGoal(const Eigen::VectorXd& state, const std::vector<std::pair<double, double>>& goalBounds);
 // Forward declaration if calculateControlAndDuration is defined later or in another file

@@ -6,63 +6,101 @@
 #include <cfloat>
 
 void MySingleIntegrator::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
-    state += dt * control;
-};
+    Eigen::VectorXd k1 = dt * control;
+    Eigen::VectorXd k2 = dt * control;
+    Eigen::VectorXd k3 = dt * control;
+    Eigen::VectorXd k4 = dt * control;
+
+    // Update state with RK4 formula
+    state += (k1 + 2 * k2 + 2 * k3 + k4) / 6.0;
+}
+
 
 void MyFirstOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
-    double x = state[0];
-    double y = state[1];
+    double r = 0.25;
     double theta = state[2];
     
-    double u0 = control[0];
-    double uw = control[1];
+    // Define the function to calculate derivatives (f in RK4)
+    auto f = [r](const Eigen::VectorXd& s, const Eigen::VectorXd& u) -> Eigen::VectorXd {
+        Eigen::VectorXd ds(3);
+        ds[0] = u[0] * r * cos(s[2]);  // dx/dt
+        ds[1] = u[0] * r * sin(s[2]);  // dy/dt
+        ds[2] = u[1];                  // dtheta/dt
+        return ds;
+    };
 
-    double r = 0.25;
-    
-    // Update state based on the dynamics
-    state[0] += dt * u0 * r * cos(theta);  // x' = x + dt * u0 * cos(theta)
-    state[1] += dt * u0 * r * sin(theta);  // y' = y + dt * u0 * sin(theta)
-    state[2] += dt * uw;               // theta' = theta + dt * uw
+    Eigen::VectorXd k1 = dt * f(state, control);
+    Eigen::VectorXd k2 = dt * f(state + 0.5 * k1, control);
+    Eigen::VectorXd k3 = dt * f(state + 0.5 * k2, control);
+    Eigen::VectorXd k4 = dt * f(state + k3, control);
 
-    // for (int i = 0; i < state.size(); ++i) {
-    //     state[i] = std::clamp(state[i], problem.q_bounds[i].first, problem.q_bounds[i].second);
-    // }
+    // Update state with RK4 formula
+    state += (k1 + 2 * k2 + 2 * k3 + k4) / 6.0;
 }
+
 
 void MySecondOrderUnicycle::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
+    double r = 0.25;
+    // Define the function to calculate derivatives (f in RK4)
+    auto f = [r](const Eigen::VectorXd& s, const Eigen::VectorXd& u) -> Eigen::VectorXd {
+        Eigen::VectorXd ds(5);
+        ds[0] = s[3] * r * cos(s[2]);  // dx/dt
+        ds[1] = s[3] * r * sin(s[2]);  // dy/dt
+        ds[2] = s[4];                  // dtheta/dt
+        ds[3] = u[0];                  // dsigma/dt (linear acceleration)
+        ds[4] = u[1];                  // domega/dt (angular acceleration)
+        return ds;
+    };
+
+    Eigen::VectorXd k1 = dt * f(state, control);
+    Eigen::VectorXd k2 = dt * f(state + 0.5 * k1, control);
+    Eigen::VectorXd k3 = dt * f(state + 0.5 * k2, control);
+    Eigen::VectorXd k4 = dt * f(state + k3, control);
+
+    // Update state with RK4 formula
+    state += (k1 + 2 * k2 + 2 * k3 + k4) / 6.0;
+}
+
+void MySimpleCar::propagate(Eigen::VectorXd& state, Eigen::VectorXd& control, double dt) {
     double x = state[0];
     double y = state[1];
     double theta = state[2];
-    double sigma = state[3];
-    double omega = state[4];
-    
-    double u1 = control[0];
-    double u2 = control[1];
+    double v = state[3];
+    double phi = state[4];
 
-    double r = 0.25;
-    
-    // Update state based on the dynamics
-    state[0] += dt * sigma * r * cos(theta);  // x' = x + dt * sigma * cos(theta)
-    state[1] += dt * sigma * r * sin(theta);  // y' = y + dt * sigma * sin(theta)
-    state[2] += dt * omega;               // theta' = theta + dt * omega
-    state[3] += dt * u1;                  // sigma' = sigma + dt * u1
-    state[4] += dt * u2;                  // omega' = omega + dt * u2
+    double u1 = control[0]; // Acceleration
+    double u2 = control[1]; // Steering rate
+
+    // Vehicle parameters
+    double L = 5.0; // Wheelbase length
+
+    // Compute derivatives
+    double dx = v * cos(theta);
+    double dy = v * sin(theta);
+    double dtheta = (v / L) * tan(phi);
+    double dv = u1;
+    double dphi = u2;
+
+    // Runge-Kutta 4th order integration
+    auto f = [L](const Eigen::VectorXd& s, const Eigen::VectorXd& u) -> Eigen::VectorXd {
+        Eigen::VectorXd ds(5);
+        ds[0] = s[3] * cos(s[2]);                  // dx/dt
+        ds[1] = s[3] * sin(s[2]);                  // dy/dt
+        ds[2] = (s[3] / L) * tan(s[4]);            // dtheta/dt
+        ds[3] = u[0];                              // dv/dt
+        ds[4] = u[1];                              // dphi/dt
+        return ds;
+    };
+
+    Eigen::VectorXd k1 = dt * f(state, control);
+    Eigen::VectorXd k2 = dt * f(state + 0.5 * k1, control);
+    Eigen::VectorXd k3 = dt * f(state + 0.5 * k2, control);
+    Eigen::VectorXd k4 = dt * f(state + k3, control);
+
+    // Update state with RK4 formula
+    state += (k1 + 2 * k2 + 2 * k3 + k4) / 6.0;
 }
 
-// amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent) {
-//     amp::KinoPath path;
-//     Eigen::VectorXd state = problem.q_init;
-//     path.waypoints.push_back(state);
-//     for (int i = 0; i < 10; i++) {
-//         Eigen::VectorXd control = Eigen::VectorXd::Random(problem.q_init.size());
-//         agent.propagate(state, control, 1.0);
-//         path.waypoints.push_back(state);
-//         path.controls.push_back(control);
-//         path.durations.push_back(1.0);
-//     } 
-//     path.valid = true;
-//     return path;
-// }
 
 // Define a functor for the zero heuristic
 class ZeroHeuristic : public amp::SearchHeuristic {
@@ -73,8 +111,10 @@ public:
 };
 
 amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::DynamicAgent& agent) {
-    int p = 0.05;
-    int n = 5000;
+    int p = 0.1;
+    int n = 50000;
+    double r = 0.25;
+    int uSamples = 15;
     amp::KinoPath path;
     static std::random_device rd;
     static std::mt19937 gen(rd());
@@ -134,7 +174,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         std::vector<double> potentialDts;
         int maxAttempts = 50; // will probably have to implement if an infinite loop happens
 
-        while(potentialControls.size() < 5){
+        while(potentialControls.size() < uSamples){
             Eigen::VectorXd control(problem.u_bounds.size());
             for (size_t k = 0; k < problem.u_bounds.size(); k++) {
                 double lower = problem.u_bounds[k].first;
@@ -144,25 +184,37 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
             double dt = amp::RNG::randf(problem.dt_bounds.first, problem.dt_bounds.second);
 
             Eigen::VectorXd potentialQnew = qNear;
+            Eigen::VectorXd previousState = potentialQnew;
 
             agent.propagate(potentialQnew, control, dt); 
 
+            bool controlInvalid = false;
+            for (int i = 0; i < potentialQnew.size(); i++){
+                if(potentialQnew[i] < problem.q_bounds[i].first){
+                    potentialQnew[i] = problem.q_bounds[i].first;
+                    controlInvalid = true;
+                } 
+                if(potentialQnew[i] > problem.q_bounds[i].second){
+                    potentialQnew[i] = problem.q_bounds[i].second;
+                    controlInvalid = true;
+                } 
+            }
+            
             // Check for obstacle intersections
-            bool edgeIntersectsObstacle = false;
             for (auto obstacle : problem.obstacles) {
                 std::vector<Eigen::Vector2d> vertices = obstacle.verticesCCW();
                 for (size_t i = 0; i < vertices.size(); ++i) {
                     Eigen::Vector2d start = vertices[i];
                     Eigen::Vector2d end = vertices[(i + 1) % vertices.size()];
                     if (doLinesIntersect(qNear.head<2>(), potentialQnew.head<2>(), start, end)) {
-                        edgeIntersectsObstacle = true;
+                        controlInvalid = true;
                         break;
                     }
                 }
-                if(edgeIntersectsObstacle) break;
+                if(controlInvalid) break;
             }
 
-            if(!edgeIntersectsObstacle){
+            if(!controlInvalid){
                 potentialControls.push_back(control);
                 potentialQnews.push_back(potentialQnew);
                 potentialDts.push_back(dt);
@@ -190,13 +242,6 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
         edges.push_back(std::make_tuple(qNearIndex, currentNodeIndex, (qNear - qNew).norm()));
 
         currentNodeIndex++;
-        // // Calculate the midpoint of the goal region
-        // Eigen::VectorXd goalMidpoint(problem.q_goal.size());
-        // for (size_t i = 0; i < problem.q_goal.size(); ++i) {
-        //     double lower = problem.q_goal[i].first;
-        //     double upper = problem.q_goal[i].second;
-        //     goalMidpoint[i] = (lower + upper) / 2.0;  // Calculate midpoint
-        // }
             
         if(isWithinGoal(qNew, problem.q_goal)){
             pathFound = true;
@@ -239,7 +284,7 @@ amp::KinoPath MyKinoRRT::plan(const amp::KinodynamicProblem2D& problem, amp::Dyn
 
     // If a path was found, mark it as valid
     path.valid = result.success;
-
+    path.pathCost = result.path_cost;
 
     // if(result.success){
     //     smoothPath(path, problem);
